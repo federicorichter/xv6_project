@@ -104,4 +104,7 @@ struct proc {
   struct file *ofile[NOFILE];  // Open files
   struct inode *cwd;           // Current directory
   char name[16];               // Process name (debugging)
+
+  uint32 priority;             // Process priority 
+  uint64 next_p_priority;      // The next process of the same priority
 };
