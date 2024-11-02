@@ -106,5 +106,12 @@ struct proc {
   char name[16];               // Process name (debugging)
 
   uint32 priority;             // Process priority 
-  uint64 next_p_priority;      // The next process of the same priority
+  struct proc *next_p_priority;      // The next process of the same priority
+};
+
+struct priorities_control{
+  uint empty[MAXPRIORITY];                      //if there are process of this priority or not
+  uint present[MAXPRIORITY];                    // is there a process with this priority?
+  struct proc *head_priority[MAXPRIORITY];            //head of each linked list
+  struct proc *current_priority[MAXPRIORITY];         // last scheduled process of each priority
 };

@@ -5,6 +5,7 @@
 #include "spinlock.h"
 #include "proc.h"
 #include "defs.h"
+#include <stddef.h>
 
 struct cpu cpus[NCPU];
 
@@ -12,11 +13,14 @@ struct proc proc[NPROC];
 
 struct proc *initproc;
 
+struct priorities_control p_control; 
+
 int nextpid = 1;
 struct spinlock pid_lock;
 
 extern void forkret(void);
 static void freeproc(struct proc *p);
+void add_process_priority(struct proc *p, int priority);
 
 extern char trampoline[]; // trampoline.S
 
@@ -25,6 +29,8 @@ extern char trampoline[]; // trampoline.S
 // memory model when using p->parent.
 // must be acquired before any p->lock.
 struct spinlock wait_lock;
+
+struct spinlock priority_lock;
 
 // Allocate a page for each process's kernel stack.
 // Map it high in memory, followed by an invalid
@@ -55,7 +61,8 @@ procinit(void)
       initlock(&p->lock, "proc");
       p->state = UNUSED;
       p->kstack = KSTACK((int) (p - proc));
-      p->priority = MAXPRIORITY;
+      p->priority = 1;
+      p->next_p_priority = NULL;
   }
 }
 
@@ -108,7 +115,7 @@ allocpid()
 // and return with p->lock held.
 // If there are no free procs, or a memory allocation fails, return 0.
 static struct proc*
-allocproc(void)
+allocproc(int priority)
 {
   struct proc *p;
 
@@ -125,6 +132,12 @@ allocproc(void)
 found:
   p->pid = allocpid();
   p->state = USED;
+
+  p->priority = priority;
+  acquire(&priority_lock);
+  p_control.present[priority] = 1;
+  add_process_priority(p,priority);
+  release(&priority_lock);
 
   // Allocate a trapframe page.
   if((p->trapframe = (struct trapframe *)kalloc()) == 0){
@@ -235,7 +248,7 @@ userinit(void)
 {
   struct proc *p;
 
-  p = allocproc();
+  p = allocproc(2);
   initproc = p;
   
   // allocate one user page and copy initcode's instructions
@@ -285,7 +298,7 @@ fork(void)
   struct proc *p = myproc();
 
   // Allocate process.
-  if((np = allocproc()) == 0){
+  if((np = allocproc(p->priority)) == 0){
     return -1;
   }
 
@@ -461,6 +474,11 @@ scheduler(void)
       if(p->state == RUNNABLE) {
 
         printf("The process is %s and the priority is %d\n", p->name, p->priority);
+        if(p->next_p_priority != NULL){
+          printf("The next process of priority is %s \n", p->next_p_priority->name);
+          printf("\n");
+        }
+        
         // Switch to chosen process.  It is the process's job
         // to release its lock and then reacquire it
         // before jumping back to us.
@@ -695,4 +713,42 @@ procdump(void)
     printf("%d %s %s", p->pid, state, p->name);
     printf("\n");
   }
+}
+
+void init_priority_control(void){
+
+  initlock(&priority_lock,"priority_lock");
+
+  for(int i = 0;i < MAXPRIORITY; i++){
+    p_control.head_priority[i] = NULL;
+    p_control.present[i] = 0;
+    p_control.current_priority[i] = NULL;
+  }
+}
+
+void set_priority(int priority, struct proc *process){
+  if((priority > MAXPRIORITY) || (priority < 0) )
+    panic("Priority nos alowed");
+
+  process->priority = priority;
+
+}
+
+//should be called with the lock 
+//iterates through linked list to add an element
+void add_process_priority(struct proc *p, int priority){
+  struct proc *aux_p;
+  //check if lock held
+
+  if(p_control.head_priority[priority] == NULL){
+    p_control.head_priority[priority] = p;
+  }
+  else{
+    aux_p = p_control.head_priority[priority];
+    while(aux_p->next_p_priority != NULL){
+      aux_p = aux_p->next_p_priority;
+    }
+    aux_p->next_p_priority = p;
+  }
+
 }

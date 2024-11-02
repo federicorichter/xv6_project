@@ -30,6 +30,7 @@
 // called by printf(), and to echo input characters,
 // but not from write().
 //
+
 void
 consputc(int c)
 {
