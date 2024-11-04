@@ -173,6 +173,8 @@ freeproc(struct proc *p)
   p->trapframe = 0;
   if(p->pagetable)
     proc_freepagetable(p->pagetable, p->sz);
+  p->priority = MAXPRIORITY;
+  p->next_p_priority = NULL;
   p->pagetable = 0;
   p->sz = 0;
   p->pid = 0;
@@ -742,6 +744,8 @@ void set_priority(int priority, struct proc *process){
 void add_process_priority(struct proc *p, int priority){
   struct proc *aux_p;
   //check if lock held
+  if(!holding(&priority_lock))
+    panic("add process priority lock");
 
   if(p_control.head_priority[priority] == NULL){
     p_control.head_priority[priority] = p;
