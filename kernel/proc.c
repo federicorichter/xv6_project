@@ -20,7 +20,6 @@ struct spinlock pid_lock;
 
 extern void forkret(void);
 static void freeproc(struct proc *p);
-void add_process_priority(struct proc *p, int priority);
 
 extern char trampoline[]; // trampoline.S
 
@@ -133,12 +132,6 @@ found:
   p->pid = allocpid();
   p->state = USED;
 
-  p->priority = priority;
-  acquire(&priority_lock);
-  p_control.present[priority] = 1;
-  add_process_priority(p,priority);
-  release(&priority_lock);
-
   // Allocate a trapframe page.
   if((p->trapframe = (struct trapframe *)kalloc()) == 0){
     freeproc(p);
@@ -153,6 +146,12 @@ found:
     release(&p->lock);
     return 0;
   }
+
+  p->priority = priority;
+  acquire(&priority_lock);
+  p_control.present[priority] = 1;
+  add_process_priority(p,priority);
+  release(&priority_lock);
 
   // Set up new context to start executing at forkret,
   // which returns to user space.
@@ -391,6 +390,10 @@ exit(int status)
 
   p->xstate = status;
   p->state = ZOMBIE;
+
+  acquire(&priority_lock);
+  free_process_priority(p);
+  release(&priority_lock);
 
   release(&wait_lock);
 
@@ -751,4 +754,33 @@ void add_process_priority(struct proc *p, int priority){
     aux_p->next_p_priority = p;
   }
 
+}
+
+//rearanges the control structure
+//updating the linked list
+int free_process_priority(struct proc *p){
+
+  struct proc *p_aux;
+
+  p_aux = p_control.head_priority[p->priority];
+
+  if(p_aux == p){
+    if(p->next_p_priority == NULL){
+      p_control.present[p->priority] = 0;
+      p_control.head_priority[p->priority] = NULL;
+    }
+    else{
+      p_control.head_priority[p->priority] = p->next_p_priority;  
+      p->next_p_priority = NULL;
+    }
+  }
+  else{
+    while(p_aux->next_p_priority != p){
+      p_aux = p_aux->next_p_priority;
+    }
+    p_aux->next_p_priority = p->next_p_priority;
+    p->next_p_priority = NULL;
+  }
+  
+  return 0;
 }

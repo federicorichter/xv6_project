@@ -110,7 +110,7 @@ struct proc {
 };
 
 struct priorities_control{
-  uint empty[MAXPRIORITY];                      //if there are process of this priority or not
+  //uint empty[MAXPRIORITY];                      //if there are process of this priority or not
   uint present[MAXPRIORITY];                    // is there a process with this priority?
   struct proc *head_priority[MAXPRIORITY];            //head of each linked list
   struct proc *current_priority[MAXPRIORITY];         // last scheduled process of each priority
