@@ -64,7 +64,7 @@ kvminithart()
   // wait for any previous writes to the page table memory to finish.
   sfence_vma();
 
-  w_satp(MAKE_SATP(kernel_pagetable));
+  //w_satp(MAKE_SATP(kernel_pagetable));
 
   // flush stale entries from the TLB.
   sfence_vma();
@@ -223,7 +223,7 @@ uvmfirst(pagetable_t pagetable, uchar *src, uint sz)
     panic("uvmfirst: more than a page");
   mem = kalloc();
   memset(mem, 0, PGSIZE);
-  mappages(pagetable, 0, PGSIZE, (uint64)mem, PTE_W|PTE_R|PTE_X|PTE_U);
+  //mappages(pagetable, 0, PGSIZE, (uint64)mem, PTE_W|PTE_R|PTE_X|PTE_U);
   memmove(mem, src, sz);
 }
 

@@ -17,8 +17,8 @@ main()
     printf("xv6 kernel is booting\n");
     printf("\n");
     kinit();         // physical page allocator
-    kvminit();       // create kernel page table
-    kvminithart();   // turn on paging
+    //kvminit();       // create kernel page table
+    //kvminithart();   // turn on paging
     procinit();      // process table
     trapinit();      // trap vectors
     trapinithart();  // install kernel trap vector
@@ -32,6 +32,7 @@ main()
     userinit();      // first user process
     __sync_synchronize();
     started = 1;
+
   } else {
     while(started == 0)
       ;

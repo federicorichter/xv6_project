@@ -120,7 +120,7 @@ usertrapret(void)
   w_sepc(p->trapframe->epc);
 
   // tell trampoline.S the user page table to switch to.
-  uint64 satp = MAKE_SATP(p->pagetable);
+  uint64 satp = 0;//MAKE_SATP(p->pagetable);
 
   // jump to userret in trampoline.S at the top of memory, which 
   // switches to the user page table, restores user registers,
@@ -173,6 +173,7 @@ clockintr()
   // ask for the next timer interrupt. this also clears
   // the interrupt request. 1000000 is about a tenth
   // of a second.
+  printf("Timer\n");
   w_stimecmp(r_time() + 1000000);
 }
 

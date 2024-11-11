@@ -133,19 +133,21 @@ found:
   p->state = USED;
 
   // Allocate a trapframe page.
-  if((p->trapframe = (struct trapframe *)kalloc()) == 0){
+  /*if((p->trapframe = (struct trapframe *)kalloc()) == 0){
     freeproc(p);
     release(&p->lock);
     return 0;
-  }
+  }*/
+  p->trapframe = (struct trapframe*) PROCESS_TRAPFRAME(p - proc);
 
   // An empty user page table.
-  p->pagetable = proc_pagetable(p);
+  /*p->pagetable = proc_pagetable(p);
   if(p->pagetable == 0){
     freeproc(p);
     release(&p->lock);
     return 0;
-  }
+  }*/
+  p->base_addr =(void *) PROCESS_MEM_BASE(p - proc);
 
   p->priority = priority;
   acquire(&priority_lock);
@@ -168,12 +170,13 @@ found:
 static void
 freeproc(struct proc *p)
 {
-  if(p->trapframe)
-    kfree((void*)p->trapframe);
+  //if(p->trapframe)
+    //kfree((void*)p->trapframe);
   p->trapframe = 0;
-  if(p->pagetable)
-    proc_freepagetable(p->pagetable, p->sz);
-  p->pagetable = 0;
+  //if(p->pagetable)
+    //proc_freepagetable(p->pagetable, p->sz);
+  //p->pagetable = 0;
+  p->base_addr = 0;
   p->sz = 0;
   p->pid = 0;
   p->parent = 0;
@@ -252,7 +255,11 @@ userinit(void)
   
   // allocate one user page and copy initcode's instructions
   // and data into it.
-  uvmfirst(p->pagetable, initcode, sizeof(initcode));
+  //uvmfirst(p->pagetable, initcode, sizeof(initcode));
+  memset(p->base_addr, 0, PGSIZE);
+  //mappages(pagetable, 0, PGSIZE, (uint64)mem, PTE_W|PTE_R|PTE_X|PTE_U);
+
+  memmove(p->base_addr, initcode, sizeof(initcode));
   p->sz = PGSIZE;
 
   // prepare for the very first "return" from kernel to user.
@@ -476,11 +483,11 @@ scheduler(void)
       acquire(&p->lock);
       if(p->state == RUNNABLE) {
 
-        printf("The process is %s and the priority is %d\n", p->name, p->priority);
+        /*printf("The process is %s and the priority is %d\n", p->name, p->priority);
         if(p->next_p_priority != NULL){
           printf("The next process of priority is %s \n", p->next_p_priority->name);
           printf("\n");
-        }
+        }*/
         
         // Switch to chosen process.  It is the process's job
         // to release its lock and then reacquire it

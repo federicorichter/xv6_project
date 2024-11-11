@@ -37,11 +37,12 @@
 // for use by the kernel and user pages
 // from physical address 0x80000000 to PHYSTOP.
 #define KERNBASE 0x80000000L
-#define PHYSTOP (KERNBASE + 128*1024*1024)
+#define PHYSTOP (KERNBASE + 512*1024*1024)
 
 // map the trampoline page to the highest address,
 // in both user and kernel space.
-#define TRAMPOLINE (MAXVA - PGSIZE)
+//#define TRAMPOLINE (MAXVA - PGSIZE)
+#define TRAMPOLINE (PHYSTOP - PGSIZE)
 
 // map kernel stacks beneath the trampoline,
 // each surrounded by invalid guard pages.
@@ -56,4 +57,12 @@
 //   ...
 //   TRAPFRAME (p->trapframe, used by the trampoline)
 //   TRAMPOLINE (the same page as in the kernel)
-#define TRAPFRAME (TRAMPOLINE - PGSIZE)
+#define TRAPFRAME (TRAMPOLINE + PGSIZE)
+
+#define DYNAMIC_SPACE 0x80000 //space used by kalloc (512 KB)
+#define PROC_SPACE (0x80000000 + DYNAMIC_SPACE) //base for processes spaces
+
+#define PROCESS_MEM_SIZE 0x40000   // Size of memory per process (256 KB)
+#define PROCESS_MEM_BASE(i) (PROC_SPACE + (i) * PROCESS_MEM_SIZE)  // Base address for process i
+#define PROCESS_TRAPFRAME(i) (PROCESS_MEM_BASE(i) + PROCESS_MEM_SIZE - sizeof(struct trapframe))  // Address of trapframe for process i
+
