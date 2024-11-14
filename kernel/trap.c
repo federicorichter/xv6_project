@@ -97,7 +97,7 @@ usertrapret(void)
   intr_off();
 
   // send syscalls, interrupts, and exceptions to uservec in trampoline.S
-  uint64 trampoline_uservec = TRAMPOLINE + (uservec - trampoline);
+  uint64 trampoline_uservec = (uint64)trampoline + (uservec - trampoline);
   w_stvec(trampoline_uservec);
 
   // set up trapframe values that uservec will need when
@@ -120,13 +120,14 @@ usertrapret(void)
   w_sepc(p->trapframe->epc);
 
   // tell trampoline.S the user page table to switch to.
-  uint64 satp = 0;//MAKE_SATP(p->pagetable);
+  //uint64 satp = 0;//MAKE_SATP(p->pagetable);
+  struct trapframe* trapframe = get_trapframe(p); //PROCESS_TRAPFRAME(p - proc);
 
   // jump to userret in trampoline.S at the top of memory, which 
   // switches to the user page table, restores user registers,
   // and switches to user mode with sret.
-  uint64 trampoline_userret = TRAMPOLINE + (userret - trampoline);
-  ((void (*)(uint64))trampoline_userret)(satp);
+  uint64 trampoline_userret = (uint64)trampoline + (userret - trampoline);
+  ((void (*)(struct trapframe*))trampoline_userret)(trapframe);
 }
 
 // interrupts and exceptions from kernel code go here via kernelvec,

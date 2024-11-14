@@ -106,10 +106,11 @@ userret:
 
         # switch to the user page table.
         sfence.vma zero, zero
-        csrw satp, a0
+        li a1, 0   # No translation if flat memory
+        csrw satp, a1
         sfence.vma zero, zero
 
-        li a0, TRAPFRAME
+        #li a0, TRAPFRAME
 
         # restore all but a0 from TRAPFRAME
         ld ra, 40(a0)

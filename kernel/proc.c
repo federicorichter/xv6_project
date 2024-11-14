@@ -164,6 +164,10 @@ found:
   return p;
 }
 
+struct trapframe* get_trapframe(struct proc *p) {
+  return (struct trapframe*) PROCESS_TRAPFRAME(p - proc);
+}
+
 // free a proc structure and the data hanging from it,
 // including user pages.
 // p->lock must be held.
@@ -263,8 +267,8 @@ userinit(void)
   p->sz = PGSIZE;
 
   // prepare for the very first "return" from kernel to user.
-  p->trapframe->epc = 0;      // user program counter
-  p->trapframe->sp = PGSIZE;  // user stack pointer
+  p->trapframe->epc =(uint64) p->base_addr;      // user program counter
+  p->trapframe->sp = (uint64) p->base_addr + PGSIZE;  // user stack pointer
 
   safestrcpy(p->name, "initcode", sizeof(p->name));
   p->cwd = namei("/");
