@@ -123,6 +123,10 @@ usertrapret(void)
   //uint64 satp = 0;//MAKE_SATP(p->pagetable);
   struct trapframe* trapframe = get_trapframe(p); //PROCESS_TRAPFRAME(p - proc);
 
+  //set sscratch
+
+  asm volatile("csrw sscratch, %0" : : "r"((uint64)p->trapframe));
+
   // jump to userret in trampoline.S at the top of memory, which 
   // switches to the user page table, restores user registers,
   // and switches to user mode with sret.

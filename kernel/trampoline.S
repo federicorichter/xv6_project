@@ -29,74 +29,69 @@ uservec:
 
         # save user a0 in sscratch so
         # a0 can be used to get at TRAPFRAME.
-        csrw sscratch, a0
+        #csrw sscratch, a0
 
         # each process has a separate p->trapframe memory area,
         # but it's mapped to the same virtual address
         # (TRAPFRAME) in every process's user page table.
-        li a0, TRAPFRAME
+        #li a0, TRAPFRAME
         
         # save the user registers in TRAPFRAME
-        sd ra, 40(a0)
-        sd sp, 48(a0)
-        sd gp, 56(a0)
-        sd tp, 64(a0)
-        sd t0, 72(a0)
-        sd t1, 80(a0)
-        sd t2, 88(a0)
-        sd s0, 96(a0)
-        sd s1, 104(a0)
-        sd a1, 120(a0)
-        sd a2, 128(a0)
-        sd a3, 136(a0)
-        sd a4, 144(a0)
-        sd a5, 152(a0)
-        sd a6, 160(a0)
-        sd a7, 168(a0)
-        sd s2, 176(a0)
-        sd s3, 184(a0)
-        sd s4, 192(a0)
-        sd s5, 200(a0)
-        sd s6, 208(a0)
-        sd s7, 216(a0)
-        sd s8, 224(a0)
-        sd s9, 232(a0)
-        sd s10, 240(a0)
-        sd s11, 248(a0)
-        sd t3, 256(a0)
-        sd t4, 264(a0)
-        sd t5, 272(a0)
-        sd t6, 280(a0)
+        sd ra, 40(sscratch)
+        sd sp, 48(sscratch)
+        sd gp, 56(sscratch)
+        sd tp, 64(sscratch)
+        sd t0, 72(sscratch)
+        sd t1, 80(sscratch)
+        sd t2, 88(sscratch)
+        sd s0, 96(sscratch)
+        sd s1, 104(sscratch)
+        sd a0, 112(sscratch)  # Save a0 (will restore from here later)
+        sd a1, 120(sscratch)
+        sd a2, 128(sscratch)
+        sd a3, 136(sscratch)
+        sd a4, 144(sscratch)
+        sd a5, 152(sscratch)
+        sd a6, 160(sscratch)
+        sd a7, 168(sscratch)
+        sd s2, 176(sscratch)
+        sd s3, 184(sscratch)
+        sd s4, 192(sscratch)
+        sd s5, 200(sscratch)
+        sd s6, 208(sscratch)
+        sd s7, 216(sscratch)
+        sd s8, 224(sscratch)
+        sd s9, 232(sscratch)
+        sd s10, 240(sscratch)
+        sd s11, 248(sscratch)
+        sd t3, 256(sscratch)
+        sd t4, 264(sscratch)
+        sd t5, 272(sscratch)
+        sd t6, 280(sscratch)
 
-	# save the user a0 in p->trapframe->a0
-        csrr t0, sscratch
-        sd t0, 112(a0)
+            # Load kernel stack pointer from p->trapframe->kernel_sp
+            ld sp, 8(sscratch)
 
-        # initialize kernel stack pointer, from p->trapframe->kernel_sp
-        ld sp, 8(a0)
+            # Set the current hart ID in tp from p->trapframe->kernel_hartid
+            ld tp, 32(sscratch)
 
-        # make tp hold the current hartid, from p->trapframe->kernel_hartid
-        ld tp, 32(a0)
+            # Load the address of usertrap() into t0
+            ld t0, 16(sscratch)
 
-        # load the address of usertrap(), from p->trapframe->kernel_trap
-        ld t0, 16(a0)
+            # Load kernel page table address for this process
+            ld t1, 0(sscratch)
 
-        # fetch the kernel page table address, from p->trapframe->kernel_satp.
-        ld t1, 0(a0)
+            # Ensure previous memory operations complete before changing page tables
+            sfence.vma zero, zero
 
-        # wait for any previous memory operations to complete, so that
-        # they use the user page table.
-        sfence.vma zero, zero
+            # Switch to kernel page table
+            csrw satp, t1
 
-        # install the kernel page table.
-        csrw satp, t1
+            # Flush stale TLB entries from the user table
+            sfence.vma zero, zero
 
-        # flush now-stale user entries from the TLB.
-        sfence.vma zero, zero
-
-        # jump to usertrap(), which does not return
-        jr t0
-
+            # Jump to usertrap() in kernel mode
+            jr t0
 .globl userret
 userret:
         # userret(pagetable)
