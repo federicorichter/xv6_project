@@ -37,61 +37,69 @@ uservec:
         #li a0, TRAPFRAME
         
         # save the user registers in TRAPFRAME
-        sd ra, 40(sscratch)
-        sd sp, 48(sscratch)
-        sd gp, 56(sscratch)
-        sd tp, 64(sscratch)
-        sd t0, 72(sscratch)
-        sd t1, 80(sscratch)
-        sd t2, 88(sscratch)
-        sd s0, 96(sscratch)
-        sd s1, 104(sscratch)
-        sd a0, 112(sscratch)  # Save a0 (will restore from here later)
-        sd a1, 120(sscratch)
-        sd a2, 128(sscratch)
-        sd a3, 136(sscratch)
-        sd a4, 144(sscratch)
-        sd a5, 152(sscratch)
-        sd a6, 160(sscratch)
-        sd a7, 168(sscratch)
-        sd s2, 176(sscratch)
-        sd s3, 184(sscratch)
-        sd s4, 192(sscratch)
-        sd s5, 200(sscratch)
-        sd s6, 208(sscratch)
-        sd s7, 216(sscratch)
-        sd s8, 224(sscratch)
-        sd s9, 232(sscratch)
-        sd s10, 240(sscratch)
-        sd s11, 248(sscratch)
-        sd t3, 256(sscratch)
-        sd t4, 264(sscratch)
-        sd t5, 272(sscratch)
-        sd t6, 280(sscratch)
+        #uservec:
+    # Load the address from sscratch into t3
+    csrr t3, sscratch
 
-            # Load kernel stack pointer from p->trapframe->kernel_sp
-            ld sp, 8(sscratch)
+    # Save user registers in TRAPFRAME using t3 as the base address
+    sd ra, 40(t3)
+    sd sp, 48(t3)
+    sd gp, 56(t3)
+    sd tp, 64(t3)
+    sd t0, 72(t3)
+    sd t1, 80(t3)
+    sd t2, 88(t3)
+    sd s0, 96(t3)
+    sd s1, 104(t3)
+    sd a0, 112(t3)
+    sd a1, 120(t3)
+    sd a2, 128(t3)
+    sd a3, 136(t3)
+    sd a4, 144(t3)
+    sd a5, 152(t3)
+    sd a6, 160(t3)
+    sd a7, 168(t3)
+    sd s2, 176(t3)
+    sd s3, 184(t3)
+    sd s4, 192(t3)
+    sd s5, 200(t3)
+    sd s6, 208(t3)
+    sd s7, 216(t3)
+    sd s8, 224(t3)
+    sd s9, 232(t3)
+    sd s10, 240(t3)
+    sd s11, 248(t3)
+    
+    sd t4, 264(t3)
+    sd t5, 272(t3)
+    sd t6, 280(t3)
 
-            # Set the current hart ID in tp from p->trapframe->kernel_hartid
-            ld tp, 32(sscratch)
+    # Load kernel stack pointer from p->trapframe->kernel_sp
+    ld sp, 8(t3)
 
-            # Load the address of usertrap() into t0
-            ld t0, 16(sscratch)
+    # Set the current hart ID in tp from p->trapframe->kernel_hartid
+    ld tp, 32(t3)
 
-            # Load kernel page table address for this process
-            ld t1, 0(sscratch)
+    # Load the address of usertrap() into t0
+    ld t0, 16(t3)
 
-            # Ensure previous memory operations complete before changing page tables
-            sfence.vma zero, zero
+    # Load kernel page table address for this process
+    ld t1, 0(t3)
 
-            # Switch to kernel page table
-            csrw satp, t1
+    # Ensure previous memory operations complete before changing page tables
+    sfence.vma zero, zero
 
-            # Flush stale TLB entries from the user table
-            sfence.vma zero, zero
+    # Switch to kernel page table
+    csrw satp, t1
 
-            # Jump to usertrap() in kernel mode
-            jr t0
+    sd t3, 256(t3)
+
+    # Flush stale TLB entries from the user table
+    sfence.vma zero, zero
+
+    # Jump to usertrap() in kernel mode
+    jr t0
+
 .globl userret
 userret:
         # userret(pagetable)

@@ -431,7 +431,7 @@ sys_chdir(void)
   return 0;
 }
 
-uint64
+/*uint64
 sys_exec(void)
 {
   char path[MAXPATH], *argv[MAXARG];
@@ -442,6 +442,7 @@ sys_exec(void)
   if(argstr(0, path, MAXPATH) < 0) {
     return -1;
   }
+
   memset(argv, 0, sizeof(argv));
   for(i=0;; i++){
     if(i >= NELEM(argv)){
@@ -472,7 +473,69 @@ sys_exec(void)
   for(i = 0; i < NELEM(argv) && argv[i] != 0; i++)
     kfree(argv[i]);
   return -1;
+}*/
+uint64
+sys_exec(void)
+{
+  char path[MAXPATH], *argv[MAXARG];
+  int i;
+  uint64 uargv, uarg;
+
+  // Fetch the physical address of argv
+  argaddr(1, &uargv);
+  
+  // Fetch the program path as a string
+  if(argstr(0, path, MAXPATH) < 0) {
+    return -1;
+  }
+  
+  // Clear the argv array
+  memset(argv, 0, sizeof(argv));
+  
+  for(i = 0;; i++) {
+    if(i >= NELEM(argv)) {
+      goto bad;
+    }
+
+    // Fetch each argument's physical address
+    if(fetchaddr(uargv + sizeof(uint64) * i, (uint64*)&uarg) < 0) {
+      goto bad;
+    }
+    if(uarg == 0) {
+      argv[i] = 0;
+      break;
+    }
+
+    // Allocate kernel memory for the argument
+    argv[i] = kalloc();
+    if(argv[i] == 0) {
+      goto bad;
+    }
+
+    // Copy the argument from user-space memory into kernel memory
+    if(fetchstr((uint64)&uarg, argv[i], PGSIZE) < 0) {
+      goto bad;
+    }
+  }
+
+  // Execute the program
+  int ret = exec(path, argv);
+
+  // Free allocated kernel memory
+  for(i = 0; i < NELEM(argv) && argv[i] != 0; i++) {
+    kfree(argv[i]);
+  }
+
+  return ret;
+
+bad:
+  // Free allocated kernel memory on error
+  for(i = 0; i < NELEM(argv) && argv[i] != 0; i++) {
+    kfree(argv[i]);
+  }
+  return -1;
 }
+
 
 uint64
 sys_pipe(void)

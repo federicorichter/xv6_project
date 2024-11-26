@@ -64,5 +64,5 @@
 
 #define PROCESS_MEM_SIZE 0x40000   // Size of memory per process (256 KB)
 #define PROCESS_MEM_BASE(i) (PROC_SPACE + (i) * PROCESS_MEM_SIZE)  // Base address for process i
-#define PROCESS_TRAPFRAME(i) (PROCESS_MEM_BASE(i) + PROCESS_MEM_SIZE - sizeof(struct trapframe))  // Address of trapframe for process i
-
+#define PROCESS_TRAPFRAME(i) (PROCESS_MEM_BASE(i) + PROCESS_MEM_SIZE - PGSIZE)  // Address of trapframe for process i
+#define PROCESS_STACK(i) (PROCESS_TRAPFRAME(i) - PGSIZE)

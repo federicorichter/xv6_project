@@ -8,7 +8,7 @@
 #include "defs.h"
 
 // Fetch the uint64 at addr from the current process.
-int
+/*int
 fetchaddr(uint64 addr, uint64 *ip)
 {
   struct proc *p = myproc();
@@ -17,17 +17,43 @@ fetchaddr(uint64 addr, uint64 *ip)
   if(copyin(p->pagetable, (char *)ip, addr, sizeof(*ip)) != 0)
     return -1;
   return 0;
+}*/
+int fetchaddr(uint64 paddr, uint64 *ip)
+{
+  struct proc *p = myproc();
+
+  // Validate that the physical address is within the allocated memory for the process
+  if (paddr < (uint64)p->base_addr || paddr + sizeof(uint64) > (uint64)p->base_addr + p->sz) {
+    return -1; // Address is out of bounds
+  }
+
+  // Directly copy the 64-bit value from the physical address
+  *ip = *(uint64 *)paddr;
+
+  return 0; // Success
 }
 
 // Fetch the nul-terminated string at addr from the current process.
 // Returns length of string, not including nul, or -1 for error.
-int
+/*int
 fetchstr(uint64 addr, char *buf, int max)
 {
   struct proc *p = myproc();
-  if(copyinstr(p->pagetable, buf, addr, max) < 0)
+  if(copyinstr(p->pagetable, buf, addr, max) < 0) // fetches from addr at pagetable into buf
     return -1;
   return strlen(buf);
+}*/
+int fetchstr(uint64 paddr, char *buf, int max)
+{
+  int i;
+  for(i = 0; i < max; i++) {
+    char c = *(char *)(paddr + i); // Directly read from physical memory
+    buf[i] = c;
+    if(c == '\0') {
+      return i; // Return the length of the string
+    }
+  }
+  return -1; // Error: string not null-terminated
 }
 
 static uint64

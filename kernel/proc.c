@@ -268,7 +268,9 @@ userinit(void)
 
   // prepare for the very first "return" from kernel to user.
   p->trapframe->epc =(uint64) p->base_addr;      // user program counter
-  p->trapframe->sp = (uint64) p->base_addr + PGSIZE;  // user stack pointer
+  p->trapframe->sp = (uint64) PROCESS_STACK(p - proc);  // user stack pointer
+  memset((void *)(p->trapframe->sp - PGSIZE), 0, PGSIZE);
+
 
   safestrcpy(p->name, "initcode", sizeof(p->name));
   p->cwd = namei("/");
