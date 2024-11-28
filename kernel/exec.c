@@ -7,7 +7,7 @@
 #include "defs.h"
 #include "elf.h"
 
-static int loadseg(pde_t *, uint64, struct inode *, uint, uint);
+//static int loadseg(pde_t *, uint64, struct inode *, uint, uint);
 
 int flags2perm(int flags)
 {
@@ -28,7 +28,7 @@ exec(char *path, char **argv)
   struct elfhdr elf;
   struct inode *ip;
   struct proghdr ph;
-  pagetable_t pagetable = 0, oldpagetable;
+  //pagetable_t pagetable = 0, oldpagetable;
   struct proc *p = myproc();
 
   begin_op();
@@ -62,79 +62,90 @@ exec(char *path, char **argv)
     if(ph.vaddr % PGSIZE != 0)
       goto bad;
     
-    uint64 sz1; 
+    //uint64 sz1;
+    uint64 pointer_segment; 
     //this has to be changed to use the heap memory space
-    if((sz1 = uvmalloc(pagetable, sz, ph.vaddr + ph.memsz, flags2perm(ph.flags))) == 0) 
+    if((pointer_segment = ualloc(sz, ph.vaddr + ph.memsz)) == 0){
+      goto bad;
+    }
+
+    /*if((sz1 = uvmalloc(pagetable, sz, ph.vaddr + ph.memsz, flags2perm(ph.flags))) == 0) 
       goto bad;
     sz = sz1;
     if(loadseg(pagetable, ph.vaddr, ip, ph.off, ph.filesz) < 0)
+      goto bad;*/
+    memset((void *)pointer_segment, 0, ph.memsz);
+
+    // Copy the program data from the ELF file to the allocated memory
+    if (readi(ip, 0, pointer_segment, ph.off, ph.filesz) != ph.filesz)
       goto bad;
+
+    sz = pointer_segment + ph.memsz;
   }
   iunlockput(ip);
   end_op();
   ip = 0;
 
   p = myproc();
-  uint64 oldsz = p->sz;
+  //uint64 oldsz = p->sz;
 
-  // Allocate some pages at the next page boundary.
-  // Make the first inaccessible as a stack guard.
-  // Use the rest as the user stack.
+  // Align the process size to a page boundary
   sz = PGROUNDUP(sz);
-  uint64 sz1;
-  if((sz1 = uvmalloc(pagetable, sz, sz + (USERSTACK+1)*PGSIZE, PTE_W)) == 0)
-    goto bad;
-  sz = sz1;
-  uvmclear(pagetable, sz-(USERSTACK+1)*PGSIZE);
-  sp = sz;
-  stackbase = sp - USERSTACK*PGSIZE;
 
-  // Push argument strings, prepare rest of stack in ustack.
-  for(argc = 0; argv[argc]; argc++) {
-    if(argc >= MAXARG)
+  // Allocate space for the stack (guard + user stack)
+  uint64 stack_guard = PGSIZE; // Guard page size
+  uint64 stack_size = USERSTACK * PGSIZE; // Total stack size
+  uint64 stack_top;
+
+  // Allocate memory for stack
+  if ((stack_top = ualloc(sz, stack_guard + stack_size)) == 0)
+    goto bad;
+
+  // Set stack base and top
+  stackbase = stack_top - stack_size;
+  sp = stack_top;
+
+  // Push argument strings onto the stack
+  for (argc = 0; argv[argc]; argc++) {
+    if (argc >= MAXARG)
       goto bad;
     sp -= strlen(argv[argc]) + 1;
-    sp -= sp % 16; // riscv sp must be 16-byte aligned
-    if(sp < stackbase)
+    sp -= sp % 16; // Align stack to 16 bytes
+    if (sp < stackbase)
       goto bad;
-    if(copyout(pagetable, sp, argv[argc], strlen(argv[argc]) + 1) < 0)
-      goto bad;
+    // Copy argument to stack
+    memmove((void *)sp, argv[argc], strlen(argv[argc]) + 1);
     ustack[argc] = sp;
   }
   ustack[argc] = 0;
 
-  // push the array of argv[] pointers.
-  sp -= (argc+1) * sizeof(uint64);
+  // Push the array of argv[] pointers
+  sp -= (argc + 1) * sizeof(uint64);
   sp -= sp % 16;
-  if(sp < stackbase)
+  if (sp < stackbase)
     goto bad;
-  if(copyout(pagetable, sp, (char *)ustack, (argc+1)*sizeof(uint64)) < 0)
-    goto bad;
+  memmove((void *)sp, (void *)ustack, (argc + 1) * sizeof(uint64));
 
-  // arguments to user main(argc, argv)
-  // argc is returned via the system call return
-  // value, which goes in a0.
+  // Set arguments for user main(argc, argv)
   p->trapframe->a1 = sp;
 
-  // Save program name for debugging.
-  for(last=s=path; *s; s++)
-    if(*s == '/')
-      last = s+1;
+  // Save program name for debugging
+  for (last = s = path; *s; s++) {
+    if (*s == '/')
+      last = s + 1;
+  }
   safestrcpy(p->name, last, sizeof(p->name));
-    
-  // Commit to the user image.
-  oldpagetable = p->pagetable;
-  p->pagetable = pagetable;
-  p->sz = sz;
-  p->trapframe->epc = elf.entry;  // initial program counter = main
-  p->trapframe->sp = sp; // initial stack pointer
-  proc_freepagetable(oldpagetable, oldsz);
+
+  // Commit to the user image
+  p->sz = sz + stack_guard + stack_size; // Update process size
+  p->trapframe->epc = elf.entry;         // Entry point for program
+  p->trapframe->sp = sp;                 // Initial stack pointer
 
   return argc; // this ends up in a0, the first argument to main(argc, argv)
 
  bad:
-  if(pagetable)
-    proc_freepagetable(pagetable, sz);
+  //if(pagetable)
+    //proc_freepagetable(pagetable, sz);
   if(ip){
     iunlockput(ip);
     end_op();
@@ -146,7 +157,7 @@ exec(char *path, char **argv)
 // va must be page-aligned
 // and the pages from va to va+sz must already be mapped.
 // Returns 0 on success, -1 on failure.
-static int
+/*static int
 loadseg(pagetable_t pagetable, uint64 va, struct inode *ip, uint offset, uint sz)
 {
   uint i, n;
@@ -165,4 +176,4 @@ loadseg(pagetable_t pagetable, uint64 va, struct inode *ip, uint offset, uint sz
   }
   
   return 0;
-}
+}*/

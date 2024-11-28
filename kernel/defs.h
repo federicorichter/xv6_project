@@ -110,6 +110,7 @@ void            procdump(void);
 void  			init_priority_control(void);
 int 			free_process_priority(struct proc *p);
 void 			add_process_priority(struct proc *p, int priority);
+uint64 			ualloc(uint64 oldsz, uint64 length);
 
 // swtch.S
 void            swtch(struct context*, struct context*);

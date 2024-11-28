@@ -797,3 +797,28 @@ int free_process_priority(struct proc *p){
   
   return 0;
 }
+
+//Allocates space in dynamic space of the process memory by two pages
+//returns the pointer to the space in memory allocated 
+//returns 0 if not able to allocate memory
+uint64 ualloc(uint64 oldsz, uint64 length) {
+
+  struct proc *p;
+  //char *mem;
+  uint64 a;
+
+  p = myproc();
+  length = PGROUNDUP(length);
+
+  //if(length < oldsz) 
+    //return length;
+
+  if((PROCESS_MEM_BASE(p-proc) + p->sz + length) < PROCESS_STACK(p-proc) - PGSIZE){
+    printf("The process base = %lu, size:%lu \n", PROCESS_MEM_BASE(p-proc), PROCESS_MEM_BASE(p-proc) + p->sz);
+    a = (PROCESS_MEM_BASE(p-proc) + p->sz);
+    p->sz += length;
+    return a;
+  }
+
+  return 0;
+}
